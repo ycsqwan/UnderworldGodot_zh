@@ -93,7 +93,13 @@ namespace Underworld
                 var fallbackFont = Godot.ResourceLoader.Load<Godot.Font>(fallbackPath);
                 if (fallbackFont != null)
                 {
-                    f.Fallbacks = new Godot.Collections.Array<Godot.Font> { fallbackFont };
+                    // Wrap in FontVariation to shrink outline glyphs so they
+                    // visually match the pixel font (~16 units). At default
+                    // size Chinese dwarfs English and breaks log rendering.
+                    var variation = new FontVariation();
+                    variation.SetBaseFont(fallbackFont);
+                    variation.SetVariationTransform(Transform2D.Identity.Scaled(new Vector2(0.6875f, 0.6875f)));
+                    f.Fallbacks = new Godot.Collections.Array<Godot.Font> { variation };
                 }
             }
         }
