@@ -99,6 +99,30 @@ namespace Underworld
                     var variation = new FontVariation();
                     variation.SetBaseFont(fallbackFont);
                     variation.SetVariationTransform(Transform2D.Identity.Scaled(new Vector2(fallbackScale, fallbackScale)));
+
+                    // The transform scales outlines, not metrics. Source Han Sans declares a
+                    // ~1.45em line box against these fonts' 12/16em, and Godot sizes a line
+                    // from the tallest font on it, so every line holding a Chinese glyph came
+                    // out ~2x too tall. At font size 64 the message log is 140px and should
+                    // show all five of its buffered lines; only one fitted, the newest fell
+                    // out of the box, and the log read as lagging several messages behind.
+                    // Shrinking fallbackScale never helped, because it never touched metrics.
+                    // FontVariation exposes no metric override and ignores the base FontFile's
+                    // cache ascent, so the only lever is the TextServer, which keys ascent by
+                    // the requested size. Lay the override down per size; past the range a
+                    // font simply keeps its natural metrics.
+                    const int MinScaledSize = 4;
+                    const int MaxScaledSize = 256;
+                    TextServer textServer = TextServerManager.GetPrimaryInterface();
+                    foreach (Rid rid in variation.GetRids())
+                    {
+                        for (int size = MinScaledSize; size <= MaxScaledSize; size++)
+                        {
+                            textServer.FontSetAscent(rid, size, ascent * size / DesignSize);
+                            textServer.FontSetDescent(rid, size, descent * size / DesignSize);
+                        }
+                    }
+
                     f.Fallbacks = new Godot.Collections.Array<Godot.Font> { variation };
                 }
             }
