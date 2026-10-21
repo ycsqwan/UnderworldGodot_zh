@@ -6,6 +6,7 @@
 [ext_resource type="FontFile" path="res://resources/fonts/FONT5X6P.tres" id="4_pfbet"]
 [ext_resource type="FontFile" path="res://resources/fonts/FONT4X5P.tres" id="5_8iiwt"]
 [ext_resource type="FontFile" path="res://resources/fonts/FONTBIG.tres" id="5_kj12g"]
+[ext_resource type="FontFile" path="res://resources/fonts/FONT5X6P_LOG.tres" id="6_logfnt"]
 [ext_resource type="Script" path="res://main.cs" id="6_3y8oy"]
 [ext_resource type="Shader" path="res://node_3d.gdshader" id="6_x6exc"]
 [ext_resource type="Texture2D" uid="uid://plikcry1ow6q" path="res://resources/placeholder_art/textbox_fill.jpg" id="7_qiq8a"]
@@ -219,7 +220,7 @@ offset_bottom = 796.0
 mouse_filter = 1
 theme_override_colors/default_color = Color(0.2, 0.109804, 0.0745098, 1)
 theme_override_constants/line_separation = -25
-theme_override_fonts/normal_font = ExtResource("4_pfbet")
+theme_override_fonts/normal_font = ExtResource("6_logfnt")
 theme_override_font_sizes/normal_font_size = 64
 bbcode_enabled = true
 text = "My dearest Alfred:
@@ -847,7 +848,7 @@ offset_bottom = 796.0
 mouse_filter = 1
 theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_constants/line_separation = -25
-theme_override_fonts/normal_font = ExtResource("4_pfbet")
+theme_override_fonts/normal_font = ExtResource("6_logfnt")
 theme_override_font_sizes/normal_font_size = 64
 bbcode_enabled = true
 text = "Line 1

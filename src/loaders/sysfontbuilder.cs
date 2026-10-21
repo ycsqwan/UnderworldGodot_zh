@@ -37,7 +37,7 @@ namespace Underworld
         /// they are.
         /// </param>
         /// <param name="descent">Rows below the baseline, same units.</param>
-        public static void Populate(FontFile f, SysFont font, float ascent, float descent)
+        public static void Populate(FontFile f, SysFont font, float ascent, float descent, float fallbackScale = 0.7f)
         {
             int cell = font.CellWidth;
             var img = Image.CreateEmpty(cell * font.GlyphCount, font.Height, false, Image.Format.Rgba8);
@@ -98,7 +98,7 @@ namespace Underworld
                     // size Chinese dwarfs English and breaks log rendering.
                     var variation = new FontVariation();
                     variation.SetBaseFont(fallbackFont);
-                    variation.SetVariationTransform(Transform2D.Identity.Scaled(new Vector2(0.5f, 0.5f)));
+                    variation.SetVariationTransform(Transform2D.Identity.Scaled(new Vector2(fallbackScale, fallbackScale)));
                     f.Fallbacks = new Godot.Collections.Array<Godot.Font> { variation };
                 }
             }

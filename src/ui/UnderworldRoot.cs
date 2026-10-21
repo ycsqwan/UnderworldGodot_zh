@@ -32,7 +32,36 @@ namespace Underworld
 			{ "FONT4X5P", "res://resources/fonts/FONT4X5P.tres" },
 			{ "FONT5X6I", "res://resources/fonts/FONT5X6I.tres" },
 			{ "FONT5X6P", "res://resources/fonts/FONT5X6P.tres" },
+			{ "FONT5X6P_LOG", "res://resources/fonts/FONT5X6P_LOG.tres" },
 			{ "FONTBIG",  "res://resources/fonts/FONTBIG.tres"  },
+		};
+
+		/// <summary>
+		/// Which parsed .SYS fills each placeholder. FONT5X6P_LOG is a second view of FONT5X6P
+		/// with a tighter Chinese fallback, so it has no .SYS of its own: it reuses FONT5X6P's
+		/// glyphs and metrics. Looking it up directly in the parsed set, or in
+		/// LegacyMetricsFor, throws — which used to abort the whole boot with no recorded
+		/// reason, because the placeholder loop runs outside the build try/catch.
+		/// </summary>
+		private static readonly Dictionary<string, string> PlaceholderSourceFont = new()
+		{
+			{ "FONT4X5P", "FONT4X5P" },
+			{ "FONT5X6I", "FONT5X6I" },
+			{ "FONT5X6P", "FONT5X6P" },
+			{ "FONT5X6P_LOG", "FONT5X6P" },
+			{ "FONTBIG",  "FONTBIG"  },
+		};
+
+		/// <summary>
+		/// Per-font Chinese fallback scale. Log area uses smaller value to fit more text.
+		/// </summary>
+		private static readonly Dictionary<string, float> FallbackScales = new()
+		{
+			{ "FONT4X5P", 0.7f },
+			{ "FONT5X6I", 0.7f },
+			{ "FONT5X6P", 0.7f },
+			{ "FONT5X6P_LOG", 0.4f },
+			{ "FONTBIG",  0.7f },
 		};
 
 		/// <summary>
@@ -294,6 +323,16 @@ namespace Underworld
 			FontsReady = false;
 			FontError = null;
 
+			// Force uwsettings' static constructor FIRST, because it is what runs LoadSettings
+			// and therefore what sets UWClass._RES and UWClass.BasePath. Booting this scene
+			// directly, as the tests do, may otherwise reach here before anything has touched
+			// uwsettings. This has to come before the translation load below: that call
+			// triggers GameStrings' static constructor, which immediately does
+			// Path.Combine(BasePath, "DATA", "STRINGS.PAK"). With BasePath still null that
+			// throws out of _EnterTree, so FontError is never set and the player gets the
+			// fail-closed screen with "No reason was recorded" rather than a real reason.
+			_ = uwsettings.instance;
+
 			// Load Chinese translation table
 			string translationPath = "res://resources/fonts/translation_zh.json";
 			string fsPath = Godot.ProjectSettings.GlobalizePath(translationPath);
@@ -306,12 +345,6 @@ namespace Underworld
 					GD.Print($"Loaded {json.Length} bytes of translation data from {fsPath}");
 				}
 			}
-
-			// Force uwsettings' static constructor, which is what runs LoadSettings and
-			// therefore what sets UWClass._RES and UWClass.BasePath. Booting this scene
-			// directly, as the tests do, may otherwise reach here before anything has
-			// touched uwsettings, leaving both unset and the failure misattributed.
-			_ = uwsettings.instance;
 
 			string dataDir = string.IsNullOrWhiteSpace(UWClass.BasePath)
 				? null
@@ -328,29 +361,34 @@ namespace Underworld
 			// shared resources, so populating them one at a time means a failure halfway
 			// leaves some fonts published and the rest empty, with FontsReady false. A retry
 			// or a second scene instance would then see a partial set.
-			var targets = new List<(FontFile Placeholder, SysFont Font, float Ascent, float Descent)>();
-			foreach (var pair in PlaceholderPaths)
-			{
-				var placeholder = GD.Load<FontFile>(pair.Value);
-				if (placeholder == null)
-				{
-					FontError = $"Placeholder font resource missing: {pair.Value}";
-					GD.PrintErr(FontError);
-					return;
-				}
-				var (ascent, descent) = SysFontProvider.LegacyMetricsFor(pair.Key);
-				targets.Add((placeholder, parsed[pair.Key], ascent, descent));
-			}
+			var targets = new List<(FontFile Placeholder, SysFont Font, float Ascent, float Descent, float Scale)>();
 
-			// Building writes into the engine, so it can still fail on a resource the header
-			// check did not anticipate. Without this the failure escapes as an unhandled
-			// exception and the player gets no recorded reason and no error screen, which is
-			// exactly what the fail-closed path exists to prevent.
+			// Resolution AND building are both inside the try. Resolution reads two lookup
+			// tables keyed by placeholder name, so a placeholder with no source .SYS or no
+			// metrics record throws here; outside the try that escaped as an unhandled
+			// exception with no recorded reason, exactly what the fail-closed path exists to
+			// prevent. The resolve-then-populate split is kept: nothing is written to a shared
+			// placeholder until every one of them has resolved.
 			try
 			{
+				foreach (var pair in PlaceholderPaths)
+				{
+					var placeholder = GD.Load<FontFile>(pair.Value);
+					if (placeholder == null)
+					{
+						FontError = $"Placeholder font resource missing: {pair.Value}";
+						GD.PrintErr(FontError);
+						return;
+					}
+					string source = PlaceholderSourceFont[pair.Key];
+					var (ascent, descent) = SysFontProvider.LegacyMetricsFor(source);
+					float scale = FallbackScales.TryGetValue(pair.Key, out float s) ? s : 0.7f;
+					targets.Add((placeholder, parsed[source], ascent, descent, scale));
+				}
+
 				foreach (var t in targets)
 				{
-					SysFontBuilder.Populate(t.Placeholder, t.Font, t.Ascent, t.Descent);
+					SysFontBuilder.Populate(t.Placeholder, t.Font, t.Ascent, t.Descent, t.Scale);
 				}
 			}
 			catch (Exception ex)

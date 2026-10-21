@@ -179,17 +179,8 @@ file_mode = 0
 access = 2
 filters = PackedStringArray("uw*.exe")
 
-[connection signal="gui_input" from="MenuMargins/Selections/Stygian/StygianPadding/StygianPoster" to="." method="OnLaunchInput" binds= [1]]
-[connection signal="gui_input" from="MenuMargins/Selections/Stygian/StygianPath" to="." method="OnPathInput" binds= [1]]
-[connection signal="gui_input" from="MenuMargins/Selections/LabyrinthItems/LabyrinthPadding/LabyrinthPoster" to="." method="OnLaunchInput" binds= [2]]
-[connection signal="gui_input" from="MenuMargins/Selections/LabyrinthItems/LabyrinthPath" to="." method="OnPathInput" binds= [2]]
-[connection signal="item_selected" from="MenuMargins/Selections/Options/Sound/SoundOptions" to="." method="_on_sound_options_item_selected"]
-[connection signal="gui_input" from="MenuMargins/Selections/Options/SoundPath/SynthPath" to="." method="_on_synth_path_gui_input"]
-[connection signal="file_selected" from="MenuMargins/GameFilesSelector" to="." method="OnGameFilesSelectorSubmitted"]
-
 [node name="LaunchError" type="Label" parent="."]
 layout_mode = 1
-theme_override_font_sizes/font_size = 17
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
@@ -201,5 +192,14 @@ offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
-autowrap_mode = 3
+theme_override_font_sizes/font_size = 17
 vertical_alignment = 2
+autowrap_mode = 3
+
+[connection signal="gui_input" from="MenuMargins/Selections/Stygian/StygianPadding/StygianPoster" to="." method="OnLaunchInput" binds= [1]]
+[connection signal="gui_input" from="MenuMargins/Selections/Stygian/StygianPath" to="." method="OnPathInput" binds= [1]]
+[connection signal="gui_input" from="MenuMargins/Selections/LabyrinthItems/LabyrinthPadding/LabyrinthPoster" to="." method="OnLaunchInput" binds= [2]]
+[connection signal="gui_input" from="MenuMargins/Selections/LabyrinthItems/LabyrinthPath" to="." method="OnPathInput" binds= [2]]
+[connection signal="item_selected" from="MenuMargins/Selections/Options/Sound/SoundOptions" to="." method="_on_sound_options_item_selected"]
+[connection signal="gui_input" from="MenuMargins/Selections/Options/SoundPath/SynthPath" to="." method="_on_synth_path_gui_input"]
+[connection signal="file_selected" from="MenuMargins/GameFilesSelector" to="." method="OnGameFilesSelectorSubmitted"]
