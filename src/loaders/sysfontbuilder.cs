@@ -98,7 +98,7 @@ namespace Underworld
                     // size Chinese dwarfs English and breaks log rendering.
                     var variation = new FontVariation();
                     variation.SetBaseFont(fallbackFont);
-                    variation.SetVariationTransform(Transform2D.Identity.Scaled(new Vector2(0.2f, 0.2f)));
+                    variation.SetVariationTransform(Transform2D.Identity.Scaled(new Vector2(0.5f, 0.5f)));
                     f.Fallbacks = new Godot.Collections.Array<Godot.Font> { variation };
                 }
             }
