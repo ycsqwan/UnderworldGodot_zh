@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
+using Godot;
 
 namespace Underworld
 {
@@ -268,6 +271,46 @@ namespace Underworld
         /// Hash is in format [block number]_[string number]
         private static Hashtable StringTable;
         private static Hashtable EntryCounts;
+
+        /// <summary>
+        /// Translation lookup table (key -> translated string). Loaded from translation_zh.json
+        /// </summary>
+        private static Dictionary<string, string> TranslationTable;
+
+        /// <summary>
+        /// Loads the translation table from a JSON string.
+        /// Caller should load the file using Godot.ResourceLoader or File.ReadAllText.
+        /// </summary>
+        public static void LoadTranslationTableFromJson(string json, string source = "memory")
+        {
+            if (!string.IsNullOrEmpty(json))
+            {
+                TranslationTable = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                GD.Print($"Translation table loaded: {TranslationTable.Count} entries from {source}");
+            }
+            else
+            {
+                TranslationTable = new Dictionary<string, string>();
+                GD.Print($"Translation json is empty from {source}");
+            }
+        }
+
+        /// <summary>
+        /// Loads the translation table from a file path (filesystem path).
+        /// </summary>
+        public static void LoadTranslationTable(string path)
+        {
+            if (File.Exists(path))
+            {
+                var json = File.ReadAllText(path);
+                LoadTranslationTableFromJson(json, path);
+            }
+            else
+            {
+                TranslationTable = new Dictionary<string, string>();
+                GD.Print($"Translation file not found: {path}");
+            }
+        }
 
 
         /// <summary>
@@ -682,9 +725,15 @@ namespace Underworld
             {
                 return "";
             }
-            string result = (string)StringTable[BlockNo.ToString("000") + "_" + StringNo.ToString("000")];
+            string key = BlockNo.ToString("000") + "_" + StringNo.ToString("000");
+            string result = (string)StringTable[key];
             if (result != null)
             {
+                // Apply translation if available
+                if (TranslationTable != null && TranslationTable.TryGetValue(key, out string translated))
+                {
+                    return translated;
+                }
                 return result;
             }
             else

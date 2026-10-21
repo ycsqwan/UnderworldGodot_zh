@@ -294,6 +294,19 @@ namespace Underworld
 			FontsReady = false;
 			FontError = null;
 
+			// Load Chinese translation table
+			string translationPath = "res://resources/fonts/translation_zh.json";
+			string fsPath = Godot.ProjectSettings.GlobalizePath(translationPath);
+			if (System.IO.File.Exists(fsPath))
+			{
+				string json = System.IO.File.ReadAllText(fsPath);
+				if (!string.IsNullOrEmpty(json))
+				{
+					GameStrings.LoadTranslationTableFromJson(json, translationPath);
+					GD.Print($"Loaded {json.Length} bytes of translation data from {fsPath}");
+				}
+			}
+
 			// Force uwsettings' static constructor, which is what runs LoadSettings and
 			// therefore what sets UWClass._RES and UWClass.BasePath. Booting this scene
 			// directly, as the tests do, may otherwise reach here before anything has

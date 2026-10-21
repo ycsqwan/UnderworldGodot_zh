@@ -85,6 +85,17 @@ namespace Underworld
             // A gap must be a visible gap, not a silent substitution from a system
             // font, or both the validation and the render test's oracle are useless.
             f.AllowSystemFallback = false;
+
+            // Add Chinese fallback font for translation support
+            string fallbackPath = "res://resources/fonts/SourceHanSansCN-Regular.otf";
+            if (Godot.ResourceLoader.Exists(fallbackPath))
+            {
+                var fallbackFont = Godot.ResourceLoader.Load<Godot.Font>(fallbackPath);
+                if (fallbackFont != null)
+                {
+                    f.Fallbacks = new Godot.Collections.Array<Godot.Font> { fallbackFont };
+                }
+            }
         }
     }
 }
