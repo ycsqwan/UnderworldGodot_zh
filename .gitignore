@@ -437,3 +437,7 @@ tests/Underworld.Sfx.Tests/fixtures/uw1/*.MT
 # of the shipping game; kept outside the repo to reduce PR noise.
 tools/
 Underworld.csproj.lscache
+
+# i18n build output
+i18n/needed_chars.txt
+build/
