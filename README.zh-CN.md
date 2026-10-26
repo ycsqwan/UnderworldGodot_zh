@@ -38,18 +38,15 @@
 ## 画面示例
 
 <p align="center">
-  <img src="docs/images/uw2-dialogue.png" width="600" alt="UW2 对话界面" />
-  <br /><sub>UW2 — 化身会议，NPC 对话与物品栏</sub>
+  <img src="docs/images/uw2-dialogue.png" width="600" />
 </p>
 
 <p align="center">
-  <img src="docs/images/uw2-log.png" width="600" alt="UW2 日志文本" />
-  <br /><sub>UW2 — 观察日志，汉字间距与换行</sub>
+  <img src="docs/images/uw2-log.png" width="600" />
 </p>
 
 <p align="center">
-  <img src="docs/images/uw2-inventory.png" width="600" alt="UW2 物品栏" />
-  <br /><sub>UW2 — 物品描述</sub>
+  <img src="docs/images/uw2-inventory.png" width="600" />
 </p>
 
 ---
