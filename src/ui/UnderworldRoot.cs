@@ -52,19 +52,12 @@ namespace Underworld
 			{ "FONTBIG",  "FONTBIG"  },
 		};
 
-		/// <summary>
-		/// Multipliers applied on top of the ink-derived Chinese fallback scale, per
-		/// placeholder. SysFontBuilder derives the base scale from the pixel font's ink height,
-		/// so a placeholder only appears here when it deliberately breaks that rule.
-		///
-		/// FONT5X6P_LOG is the one. It is a second view of FONT5X6P, so it shares that font's
-		/// 6-row ink, but the message log has to fit more text than that box was designed for
-		/// and so draws its Chinese smaller. 0.75 is a tunable, not a measured value.
-		/// </summary>
-		private static readonly Dictionary<string, float> FallbackScaleMultipliers = new()
-		{
-			{ "FONT5X6P_LOG", 0.75f },
-		};
+		// A FallbackScaleMultipliers table used to live here. Its only entry drew
+		// FONT5X6P_LOG's Chinese at 0.75 of the ink-matched scale so the message log would fit
+		// more text. It is gone: the multiplier went through a FontVariation transform, which
+		// scales outlines but never advances, so each unit of shrink widened the hole after every
+		// hanzi. The log now gets the full ink-matched size and fits its text because
+		// MessageDisplay wraps on measured width rather than on a character count.
 
 		/// <summary>
 		/// Walks ancestors for the owning root. Callers use this rather than CurrentScene,
@@ -336,7 +329,13 @@ namespace Underworld
 			_ = uwsettings.instance;
 
 			// Load Chinese translation table
+			// UW1 and UW2 share the same STRINGS.PAK key space but hold different text per
+			// key, so the UW1 table would produce wrong Chinese in UW2. Load a dedicated table.
 			string translationPath = "res://resources/fonts/translation_zh.json";
+			if (UWClass._RES == UWClass.GAME_UW2 && ResourceLoader.Exists("res://resources/fonts/translation_zh_uw2.json"))
+			{
+				translationPath = "res://resources/fonts/translation_zh_uw2.json";
+			}
 			string fsPath = Godot.ProjectSettings.GlobalizePath(translationPath);
 			if (System.IO.File.Exists(fsPath))
 			{
@@ -363,7 +362,7 @@ namespace Underworld
 			// shared resources, so populating them one at a time means a failure halfway
 			// leaves some fonts published and the rest empty, with FontsReady false. A retry
 			// or a second scene instance would then see a partial set.
-			var targets = new List<(FontFile Placeholder, SysFont Font, float Ascent, float Descent, float Scale)>();
+			var targets = new List<(FontFile Placeholder, SysFont Font, float Ascent, float Descent)>();
 
 			// Resolution AND building are both inside the try. Resolution reads two lookup
 			// tables keyed by placeholder name, so a placeholder with no source .SYS or no
@@ -384,20 +383,14 @@ namespace Underworld
 					}
 					string source = PlaceholderSourceFont[pair.Key];
 					var (ascent, descent) = SysFontProvider.LegacyMetricsFor(source);
-					// The base scale comes from the pixel font's ink height, so the Chinese ink
-					// matches the English ink; only placeholders that deliberately break that
-					// rule carry a multiplier.
-					float scale = SysFontBuilder.FallbackScaleFor(parsed[source].Height);
-					if (FallbackScaleMultipliers.TryGetValue(pair.Key, out float multiplier))
-					{
-						scale *= multiplier;
-					}
-					targets.Add((placeholder, parsed[source], ascent, descent, scale));
+					// No scale is passed: the size that matches this pixel font's ink is baked into
+					// the fallback it selects, so outlines and advances shrink together.
+					targets.Add((placeholder, parsed[source], ascent, descent));
 				}
 
 				foreach (var t in targets)
 				{
-					SysFontBuilder.Populate(t.Placeholder, t.Font, t.Ascent, t.Descent, t.Scale);
+					SysFontBuilder.Populate(t.Placeholder, t.Font, t.Ascent, t.Descent);
 				}
 			}
 			catch (Exception ex)

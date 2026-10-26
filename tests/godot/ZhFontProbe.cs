@@ -14,12 +14,21 @@ using Underworld;
 /// boot, so the Chinese fallback is checked in the fonts it will actually appear next to
 /// rather than in isolation.
 ///
-/// For each font it writes zh_<FONT>.png and reports the ink-derived fallback scale, the
-/// resulting em size, the pixel font's ink height and the fallback's hanzi ink height --
-/// those last two must agree -- and how many pixels came out at an intermediate level. A
-/// bitmap font rasterised with antialiasing off must produce a purely binary alpha, so the
-/// mid-level count is the signal: anything above zero means FreeType smoothed the
-/// outlines and the blocky look is gone.
+/// For each font it writes zh_&lt;FONT&gt;.png and reports four things:
+///
+///   ink@64      the pixel font's ink height at font size 64, from its row count
+///   hanzi@64    the fallback's median hanzi ink height, measured off the glyphs
+///   adv@64      the fallback's hanzi advance, measured by shaping ten of them
+///   mid%        pixels that came out at an intermediate alpha level
+///
+/// adv must track ink. This is the regression that made the message log unreadable: a
+/// FontVariation transform scaled the outlines but not the advances, so hanzi drew at 24px
+/// of ink inside a 59.7px cell and Chinese read as one character per two. The check below
+/// fails the probe if the advance drifts outside a narrow band around the ink.
+///
+/// mid must be zero. A bitmap font rasterised with antialiasing off produces purely binary
+/// alpha, so anything above zero means FreeType smoothed the outlines and the blocky look
+/// is gone.
 ///
 /// Run it with a real rendering driver, because headless returns dummy values:
 ///
@@ -30,10 +39,18 @@ using Underworld;
 /// </summary>
 public partial class ZhFontProbe : Control
 {
+	// Godot's OS.GetEnvironment returns "" for an unset variable, not null, so these cannot
+	// use the ?? operator.
+	private static string EnvOr(string name, string fallback)
+	{
+		string value = OS.GetEnvironment(name);
+		return string.IsNullOrWhiteSpace(value) ? fallback : value;
+	}
+
 	private static readonly string DataDir =
-		OS.GetEnvironment("UW_DATA") ?? @"D:\uuchinese\UW1\UW\DATA";
+		EnvOr("UW_DATA", @"D:\uuchinese\UW1\UW\DATA");
 	private static readonly string OutDir =
-		OS.GetEnvironment("UW_PROBE_OUT") ?? @"D:\uuchinese\zh_probe";
+		EnvOr("UW_PROBE_OUT", @"D:\uuchinese\zh_probe");
 
 	private static readonly string[] FontOrder =
 	{
@@ -44,7 +61,15 @@ public partial class ZhFontProbe : Control
 	/// the .SYS bitmaps rasterise at whole pixels; the fallback should too.</summary>
 	private static readonly int[] Sizes = { 32, 48, 64 };
 
+	/// <summary>The size the message log uses, and the one that exposed the advance bug.</summary>
+	private const int ReferenceSize = 64;
+
+	/// <summary>Ten hanzi, so shaping divides out side bearings instead of measuring one.</summary>
+	private const string HanziRun = "深深深深深深深深深深";
+
 	private const string Text = "深渊的加拉蒙说: Avatar, 你听见了吗? 12345";
+
+	private int _failures;
 
 	public override void _Ready()
 	{
@@ -70,13 +95,20 @@ public partial class ZhFontProbe : Control
 				if (!fonts.TryGetValue(placeholder, out SysFont sys))
 				{
 					GD.PushError("[ZhFontProbe] " + placeholder + " did not load");
+					_failures++;
 					continue;
 				}
 				await RenderFont(placeholder, sys);
 			}
 
-			await ScaleSweep(fonts);
+			if (_failures > 0)
+			{
+				GD.PushError("[ZhFontProbe] " + _failures + " check(s) failed");
+				GetTree().Quit(1);
+				return;
+			}
 
+			GD.Print("[ZhFontProbe] all checks passed");
 			GetTree().Quit(0);
 		}
 		catch (Exception ex)
@@ -86,73 +118,32 @@ public partial class ZhFontProbe : Control
 		}
 	}
 
-	/// <summary>
-	/// Renders the 6-row FONT5X6P at a range of fallback scales so the trade-off can be
-	/// seen rather than argued about.
-	///
-	/// Filling the line box (0.75) leaves the Chinese roughly twice as tall as the English,
-	/// because the line box is 12 design units but the ink is only 6 rows. Matching the ink
-	/// instead is what SysFontBuilder.FallbackScaleFor now does, and it lands on
-	/// 6 * 1500 / (16 * 1300) = 0.4327.
-	/// </summary>
-	private async System.Threading.Tasks.Task ScaleSweep(Dictionary<string, SysFont> fonts)
-	{
-		var sys = fonts["FONT5X6P"];
-		var (ascent, descent) = SysFontProvider.LegacyMetricsFor("FONT5X6P");
-
-		float[] scales = { 0.75f, 0.60f, 0.50f, 0.433f };
-		int size = 64;
-
-		var layer = new Control();
-		layer.SetAnchorsPreset(LayoutPreset.FullRect);
-		AddChild(layer);
-
-		var bg = new ColorRect { Color = Colors.Black };
-		bg.SetAnchorsPreset(LayoutPreset.FullRect);
-		layer.AddChild(bg);
-
-		float y = 10f;
-		foreach (float scale in scales)
-		{
-			var font = SysFontBuilder.Build(sys, ascent, descent);
-			SysFontBuilder.Populate(font, sys, ascent, descent, scale);
-
-			var label = new Label
-			{
-				Text = string.Format("[{0:0.###}] {1}", scale, Text),
-				Position = new Vector2(10f, y),
-			};
-			label.AddThemeFontOverride("font", font);
-			label.AddThemeFontSizeOverride("font_size", size);
-			layer.AddChild(label);
-			y += size + 8f;
-		}
-
-		await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-		await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-		await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-
-		var img = GetViewport().GetTexture().GetImage();
-		if (img != null)
-		{
-			img.SavePng(Path.Combine(OutDir, "zh_FONT5X6P_sweep.png"));
-			GD.Print("[ZhFontProbe] wrote zh_FONT5X6P_sweep.png");
-		}
-		layer.Free();
-	}
-
 	private async System.Threading.Tasks.Task RenderFont(string placeholder, SysFont sys)
 	{
 		var (ascent, descent) = SysFontProvider.LegacyMetricsFor(placeholder);
-		float scale = SysFontBuilder.FallbackScaleFor(sys.Height);
 		var font = SysFontBuilder.Build(sys, ascent, descent);
-		SysFontBuilder.Populate(font, sys, ascent, descent, scale);
+
+		float pixelInk = sys.Height * (float)ReferenceSize / SysFontBuilder.DesignSize;
+		float adv = font.GetStringSize(HanziRun, HorizontalAlignment.Left, -1, ReferenceSize).X
+			/ HanziRun.Length;
 
 		GD.Print(string.Format(
-			"[ZhFontProbe] {0}: rows={1} ascent={2} descent={3} scale={4:0.####} em@64={5:0.###}px pixel-ink@64={6:0.###}px hanzi-ink@64={7:0.###}px",
-			placeholder, sys.Height, ascent, descent, scale, scale * 64f,
-			sys.Height * 64f / SysFontBuilder.DesignSize,
-			scale * 64f * SysFontBuilder.HanziInkUnits / SysFontBuilder.Upem));
+			"[ZhFontProbe] {0}: rows={1} ascent={2} descent={3} pixel-ink@64={4:0.###}px adv@64={5:0.###}px",
+			placeholder, sys.Height, ascent, descent, pixelInk, adv));
+
+		// The advance has to sit just above the ink: a hair wider so hanzi do not touch, but
+		// nowhere near the ~2.5x the broken transform produced.
+		float low = pixelInk * 0.98f;
+		float high = pixelInk * 1.25f;
+		if (adv < low || adv > high)
+		{
+			GD.PushError(string.Format(
+				"[ZhFontProbe] {0}: hanzi advance {1:0.###}px at size {2} is outside " +
+				"{3:0.###}-{4:0.###}px for {5:0.###}px of ink; " +
+				"the baked fallback is wrong or missing",
+				placeholder, adv, ReferenceSize, low, high, pixelInk));
+			_failures++;
+		}
 
 		var layer = new Control();
 		layer.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -186,6 +177,7 @@ public partial class ZhFontProbe : Control
 		{
 			GD.PushError("[ZhFontProbe] " + placeholder + ": viewport readback returned nothing");
 			layer.Free();
+			_failures++;
 			return;
 		}
 
@@ -214,6 +206,14 @@ public partial class ZhFontProbe : Control
 		GD.Print(string.Format(
 			"[ZhFontProbe]   wrote {0}  ink={1} mid={2} mid%={3:0.###}",
 			path, ink, mid, 100.0 * mid / Math.Max(ink, 1)));
+
+		if (mid > 0)
+		{
+			GD.PushError(string.Format(
+				"[ZhFontProbe] {0}: {1} pixels are antialiased; the bitmap look is gone",
+				placeholder, mid));
+			_failures++;
+		}
 
 		layer.Free();
 	}
