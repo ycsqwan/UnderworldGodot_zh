@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""Subset Source Han Sans CN down to the characters the Chinese build renders.
+"""Subset a CJK font down to the characters the Chinese build renders.
 
     python i18n/collect_chars.py
     python i18n/subset_font.py i18n/needed_chars.txt \
-        resources/fonts/SourceHanSansCN-Regular.otf \
-        build/SourceHanSansCN-Subset.otf
+        resources/fonts/WenQuanYiBitmapSong14px.ttf \
+        build/WenQuanYiBitmapSong14px-Subset.ttf
 
-The full font is 8.4 MB and covers 30926 glyphs; the subset is around 0.4 MB.
-The output keeps the name table (copyright plus the OFL licence text), the
-glyph order and the CFF charstrings for the kept code points, and drops the
-rest. A verification pass at the end fails loudly if any code point the source
-font actually covers was lost, so a bad subset can never ship silently.
+WenQuanYi Bitmap Song 14px is 5.6 MB and covers 22825 glyphs; the subset is 337 KB and
+1625 glyphs, which is the point of subsetting a font that ships in the repo rather than
+loading from disk.
+
+The output keeps the name table (copyright and licence text), the glyph order and the
+outlines for the kept code points, and drops the rest. A verification pass at the end
+fails loudly if any code point the source font actually covers was lost, so a bad subset
+can never ship silently.
 
 Requires fonttools:  pip install fonttools
 """

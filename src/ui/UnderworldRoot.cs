@@ -53,15 +53,17 @@ namespace Underworld
 		};
 
 		/// <summary>
-		/// Per-font Chinese fallback scale. Log area uses smaller value to fit more text.
+		/// Multipliers applied on top of the ink-derived Chinese fallback scale, per
+		/// placeholder. SysFontBuilder derives the base scale from the pixel font's ink height,
+		/// so a placeholder only appears here when it deliberately breaks that rule.
+		///
+		/// FONT5X6P_LOG is the one. It is a second view of FONT5X6P, so it shares that font's
+		/// 6-row ink, but the message log has to fit more text than that box was designed for
+		/// and so draws its Chinese smaller. 0.75 is a tunable, not a measured value.
 		/// </summary>
-		private static readonly Dictionary<string, float> FallbackScales = new()
+		private static readonly Dictionary<string, float> FallbackScaleMultipliers = new()
 		{
-			{ "FONT4X5P", 0.7f },
-			{ "FONT5X6I", 0.7f },
-			{ "FONT5X6P", 0.7f },
-			{ "FONT5X6P_LOG", 0.4f },
-			{ "FONTBIG",  0.7f },
+			{ "FONT5X6P_LOG", 0.75f },
 		};
 
 		/// <summary>
@@ -382,7 +384,14 @@ namespace Underworld
 					}
 					string source = PlaceholderSourceFont[pair.Key];
 					var (ascent, descent) = SysFontProvider.LegacyMetricsFor(source);
-					float scale = FallbackScales.TryGetValue(pair.Key, out float s) ? s : 0.7f;
+					// The base scale comes from the pixel font's ink height, so the Chinese ink
+					// matches the English ink; only placeholders that deliberately break that
+					// rule carry a multiplier.
+					float scale = SysFontBuilder.FallbackScaleFor(parsed[source].Height);
+					if (FallbackScaleMultipliers.TryGetValue(pair.Key, out float multiplier))
+					{
+						scale *= multiplier;
+					}
 					targets.Add((placeholder, parsed[source], ascent, descent, scale));
 				}
 

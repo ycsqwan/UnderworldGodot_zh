@@ -1,6 +1,7 @@
 # UnderworldGodot
 
 - [UnderworldGodot](#underworldgodot)
+  - [Chinese localization fork](#chinese-localization-fork)
   - [Overview](#overview)
   - [Credits](#credits)
   - [Before you begin.](#before-you-begin)
@@ -27,6 +28,26 @@
         - [Credits from the Abysmal Project](#credits-from-the-abysmal-project)
         - [Credits from the Underworld Adventures Project](#credits-from-the-underworld-adventures-project)
         - [Other contributions to this document](#other-contributions-to-this-document)
+
+## Chinese localization fork
+
+This repository is a fork of [hankmorgan/UnderworldGodot](https://github.com/hankmorgan/UnderworldGodot)
+that adds a Simplified Chinese localization. Upstream is MIT licensed and unchanged; see
+`LICENSE.md` for the upstream copyright notice. Nothing here is merged back upstream.
+
+### What is added relative to upstream
+
+| Path | What it is |
+|---|---|
+| `resources/fonts/translation_zh.json` | The translation table, keyed `"block_string"` (for example `001_002`). `GameStrings.GetString` consults it first and falls back to the original English on a miss, so an untranslated string is still playable. |
+| `resources/fonts/WenQuanYiBitmapSong14px.ttf` | The CJK fallback the four `.SYS` UI fonts draw their Chinese through. See `docs/font-architecture.md`. |
+| `i18n/` | Scripts that collect the characters the game renders, subset the fallback to them, and check coverage. |
+
+### Status
+
+The translation is **incomplete**. `i18n/README.md` records what is translated, what is
+not, and the terminology decisions taken so far. The CJK font is wired in and verified
+against all four UI fonts; the game itself has not yet been played end to end with it.
 
 ## Overview
 An engine recreation of Ultima Underworld and Ultima Underworld 2 in the Godot Engine.

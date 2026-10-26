@@ -69,6 +69,48 @@ font loses nothing.
 TTFs. The runtime fonts are one pixel taller per line at font size 64, so those constants moved
 by one to keep the same pitch. Without it the character panel lost a row off the bottom.
 
+## The Chinese fallback
+
+The four UI fonts are Latin-only. Chinese is drawn by a fallback that
+`SysFontBuilder.Populate` appends to each font's `FontFallback` list:
+
+`resources/fonts/WenQuanYiBitmapSong14px.ttf` — WenQuanYi Bitmap Song, 14px cut. It is
+a bitmap font converted to outlines, so it covers the translation table (1483 distinct
+non-ASCII code points) and, with the right rasterisation parameters, still rasterises as
+pure black and white.
+
+Three things have to be right, and each fails differently:
+
+1. **Rasterisation.** `antialiasing=0`, `hinting=0`, `subpixel_positioning=0`, set both on
+   the `FontVariation` Godot is handed and in the `.import` file beside the `.ttf`. Leave
+   antialiasing on and FreeType smooths the outlines into greyscale, which is the opposite
+   of the look the game has.
+2. **Metrics.** The fallback's own ascent/descent are 1200/-300, which at these sizes
+   would double the line height. The `FontVariation` is pinned to the pixel font's line box
+   instead, so the fallback's line box *is* the pixel font's line box.
+3. **Scale.** A `FontVariation` transform scales outlines and never metrics, so the
+   fallback's glyphs are drawn at `fallbackScale * size` pixels of em whatever the metrics
+   above say. `FallbackScaleFor` picks that scale so the fallback's hanzi ink is the same
+   height as the pixel font's ink:
+
+   ```
+   fallbackScale = inkRows * upem / (DesignSize * hanziInkUnits)
+   ```
+
+   `hanziInkUnits` is 1300 — the median hanzi outline bbox height over the 1483 code points
+   the translation table uses, measured by `i18n/measure_ink.py`. Deriving this from the
+   line box instead, `(ascent + descent) / DesignSize`, is wrong for the three small fonts:
+   their line box is 12 design units but their ink is 4-7 rows, so the rule drew the Chinese
+   1.6-1.9x taller than the English. FONTBIG is the one case where the two rules agree,
+   because its line box (15 units) equals its ink (15 rows).
+
+At font size 64 that gives FONT4X5P 0.2885 (ink 16px), FONT5X6I 0.5048 (28px), FONT5X6P
+0.4327 (24px) and FONTBIG 1.0817 (60px). In every case the fallback's hanzi ink equals the
+pixel font's ink, and the mid-level pixel count is zero.
+
+`tests/godot/zh_font_probe.tscn` renders all four with their fallback and reports the same
+numbers. It needs a real rendering driver, so it cannot run headless.
+
 ## Known residuals
 
 - **`EndGameStats` renders at font size 40**, which is 2.5 times the source pixel grid. A
@@ -82,6 +124,9 @@ by one to keep the same pitch. Without it the character panel lost a row off the
   than they did. `line_separation` does not apply to a single line.
 - The four converted `.ttf` files are still committed and referenced by nothing. They are kept
   deliberately as a fallback until the runtime path has seen real use.
+- `SourceHanSansCN-Regular.otf` (8.4 MB), the fork's first CJK fallback, was superseded by
+  WenQuanYi Bitmap Song and has been removed. WenQuanYi Bitmap Song 14px is the only CJK
+  fallback now, and it is the only font the fallback path loads.
 
 ## Testing
 

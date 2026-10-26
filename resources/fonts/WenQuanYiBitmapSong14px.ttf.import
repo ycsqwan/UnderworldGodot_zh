@@ -2,18 +2,18 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://b74tqrhalko2v"
-path="res://.godot/imported/SourceHanSansCN-Regular.otf-2a575f79aec560b97fe1cff7dfd52145.fontdata"
+uid="uid://dp3hxg7oyajv3"
+path="res://.godot/imported/WenQuanYiBitmapSong14px.ttf-ab407d5ac914c7530424ff9ed9b670fa.fontdata"
 
 [deps]
 
-source_file="res://resources/fonts/SourceHanSansCN-Regular.otf"
-dest_files=["res://.godot/imported/SourceHanSansCN-Regular.otf-2a575f79aec560b97fe1cff7dfd52145.fontdata"]
+source_file="res://resources/fonts/WenQuanYiBitmapSong14px.ttf"
+dest_files=["res://.godot/imported/WenQuanYiBitmapSong14px.ttf-ab407d5ac914c7530424ff9ed9b670fa.fontdata"]
 
 [params]
 
 Rendering=null
-antialiasing=1
+antialiasing=0
 generate_mipmaps=false
 disable_embedded_bitmaps=true
 multichannel_signed_distance_field=false
@@ -21,8 +21,8 @@ msdf_pixel_range=8
 msdf_size=48
 allow_system_fallback=true
 force_autohinter=false
-hinting=1
-subpixel_positioning=1
+hinting=0
+subpixel_positioning=0
 oversampling=0.0
 Fallbacks=null
 fallbacks=[]
