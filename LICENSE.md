@@ -19,3 +19,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Scope
+-----
+
+This license covers the engine code only. It does not cover the fonts under
+`resources/fonts/` (WenQuanYi Bitmap Song 14px, GPL-2.0 with the font embedding
+exception — see `resources/fonts/WenQuanYi-LICENSE.txt`), the translation
+tables (CC BY-NC-SA 4.0), or any game assets. Those are separate works and are
+licensed as described in [README.zh-CN.md](README.zh-CN.md).

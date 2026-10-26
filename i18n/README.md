@@ -1,105 +1,109 @@
-# Chinese localization — tooling and status
+# i18n — CJK font and translation tooling
 
-This directory holds the scripts behind the Simplified Chinese localization. The
-localization lives **in the engine**, not in a separate mod: the translation table is
-read by `GameStrings.GetString` at runtime, and the CJK glyphs come from a fallback font
-that the four `.SYS` UI fonts already know how to call. See `docs/font-architecture.md`
-for the font side and the root `README.md` for the fork as a whole.
+Tooling that builds the CJK fallback the UI fonts draw their Chinese through, and that
+checks the translation tables. The fonts themselves live in
+[`../resources/fonts/`](../resources/fonts/); this directory holds the code that produces
+and validates them.
 
-## The translation table
+## The problem
 
-`resources/fonts/translation_zh.json` maps `"block_string"` to Chinese, where `block` is
-the three-digit `StringTable` block and `string` the three-digit string number, both
-zero-padded — `"001_002"` is block 1, string 2. The file is UTF-8 **with a BOM**, so read
-it with `utf-8-sig`.
+The engine ships four pixel fonts (`FONT4X5P`, `FONT5X6I`, `FONT5X6P`, `FONTBIG`) that
+have no CJK coverage. When a string contains hanzi, `SysFontProvider` falls back to one
+of the TTFs in `resources/fonts/`. Matching that fallback to the pixel font used to be
+done with a `FontVariation` transform — and that is the bug this directory exists to fix.
 
-`GameStrings.GetString` looks the key up and returns the Chinese on a hit. A miss falls
-through to the original `StringTable` entry, so an untranslated string still renders in
-English and the game stays playable.
+A transform scales **outlines only**. It never touches advances. So shrinking the hanzi
+to match the English ink height left every hanzi with its full-width advance: 24px of ink
+followed by ~36px of empty space, in a log font whose cell is 11px wide. See
+[`../docs/font-architecture.md`](../docs/font-architecture.md) for the full history.
 
-The table is keyed on the string the engine actually asks for, so the same line in
-different releases is two keys: `001_003` and `001_139` are the same text.
+## The fix
 
-### Deliberately untranslated
+Subsetting a font is already a build step here, so bake the scale into the font instead:
+raise `unitsPerEm` and every glyph — outlines **and** advances — scales with it. The em
+is chosen so the hanzi ink lands exactly on the pixel font's ink:
 
-- `002_051`–`002_076` — the 26 shrine words. `shrine.cs` compares the player's input
-  against `GetString(2, 51 + i).ToUpper()`, so translating them would break the shrines.
-  `collect_chars.py` keeps them out of the subset for the same reason.
-- Anything the engine compares or parses rather than displays.
-
-## The CJK fallback font
-
-`resources/fonts/WenQuanYiBitmapSong14px.ttf` — WenQuanYi Bitmap Song, 14px cut. It is the
-only CJK font that both covers the translation table and rasterises as a bitmap rather
-than as greyscale. See `docs/font-architecture.md` for why that matters.
-
-`SysFontBuilder.Populate` adds it to every `.SYS` font's `FontFallback` list and builds a
-`FontVariation` over it that carries three things:
-
-1. **The pixel font's metrics.** The fallback's own ascent/descent (1200/-300) would
-   double the line height at these sizes, so the variation is pinned to the pixel font's
-   line box instead.
-2. **A scale chosen so the fallback's hanzi ink matches the pixel font's ink.** The pixel
-   fonts draw 4–15 rows of ink inside a line box that is often twice as tall, so a scale
-   derived from the line box draws the Chinese 1.6–1.9x too tall. The scale is
-   `inkRows * upem / (DesignSize * hanziInkUnits)` — see `FallbackScaleFor`.
-3. **Godot's rasterisation parameters** — antialiasing off, hinting off, subpixel
-   positioning off — which is what keeps the outlines binary rather than greyscale.
-
-The `.import` file beside the `.ttf` has to agree: `antialiasing=0`, `hinting=0`,
-`subpixel_positioning=0`, and `disable_embedded_bitmaps=true`. Godot does not rewrite
-those when it re-imports, so edit the `.import` by hand if they ever change.
-
-### Subsetting
-
-The full font is 5.6 MB and 22825 glyphs; the translation table needs 1483 distinct
-non-ASCII code points. `subset_font.py` cuts it to those plus ASCII and the punctuation
-the UI uses, which lands at 1625 glyphs / 337 KB.
-
-```sh
-python i18n/collect_chars.py                          # writes i18n/needed_chars.txt
-python i18n/subset_font.py --help
-python i18n/font_coverage.py                             # coverage -> build/wqy_coverage.txt
-python i18n/translation_coverage.py --untranslated               # per-block translation report
-python i18n/measure_ink.py                           # hanzi ink height, in font units
+```
+hanzi ink (px) = HanziInkUnits / upem * size
+pixel ink (px) = Height       / DesignSize * size
+=> upem = HanziInkUnits * DesignSize / Height
 ```
 
-`collect_chars.py` reads the translation table, the `.cs` sources and the `.tscn`/`.tres`
-files. `measure_ink.py` produces the `HanziInkUnits` constant that
-`SysFontBuilder.FallbackScaleFor` is built on — the two must stay in step if the fallback
-font is ever replaced.
+With `HanziInkUnits = 1300` and `DesignSize = 16`:
 
-## Status
+| ink rows | slot | upem | baked file |
+|---|---|---|---|
+| 4 | `FONT4X5P` | 5200 | `WenQuanYiBitmapSong14px-ink4.ttf` |
+| 6 | `FONT5X6P` | 3467 | `WenQuanYiBitmapSong14px-ink6.ttf` |
+| 7 | `FONT5X6I` | 2971 | `WenQuanYiBitmapSong14px-ink7.ttf` |
+| 15 | `FONTBIG` | 1387 | `WenQuanYiBitmapSong14px-ink15.ttf` |
 
-Numbers below are from `translation_coverage.py` over `translation_zh.json`: **7091 keys, 1872 with
-Chinese (26.4%), 27 empty values, 1483 distinct non-ASCII code points.**
+The four baked fonts are subsets (2671 glyphs each) of the source font, so they are
+small enough to ship while still covering every character the game renders.
 
-| Group | Keys | Translated |
-|---|---|---|
-| `001`–`010` — UI, items, misc | 1778 | 1750 (98.4%) |
-| `3072`–`3105` — subtitles | 122 | 122 (100%) |
-| `024` — debug strings | 101 | 0 |
-| `3585`–`3999` — NPC dialogue | 5090 | 0 |
+## Scripts
 
-Translated: the whole of `001` except `001_000` (`"Hey, its all the game strings"`, a
-placeholder the engine never asks for) and `001_170` (`"……"`); all of `003`–`010`; the
-subtitle blocks; and `002` apart from the shrine words.
+| Script | Purpose |
+|---|---|
+| [`build_fallback_fonts.py`](build_fallback_fonts.py) | **One-stop.** Collects the characters the game renders, subsets the source font to them, rescales `unitsPerEm` per slot, writes the four baked TTFs, and asserts the results. |
+| [`font_coverage.py`](font_coverage.py) | Reports which of the game's characters the baked fonts cover. |
+| [`check_cjk_fonts.py`](check_cjk_fonts.py) | Verifies the four baked fonts load and rasterise identically to the source. |
+| [`measure_ink.py`](measure_ink.py) | Measures the hanzi ink height of a font in font units. |
+| [`needed_chars.txt`](needed_chars.txt) | The collected character set, for reference. |
+| [`translation_coverage.py`](translation_coverage.py) | Reports translation-table coverage per string block. |
+| [`collect_chars.py`](collect_chars.py), [`subset_font.py`](subset_font.py) | **Superseded.** The older two-step pipeline (`collect_chars` → `subset_font`), kept for reference. `build_fallback_fonts.py` does both in one pass. |
 
-Not translated: `024` entirely, and all 5090 NPC dialogue lines in `3585`–`3999`.
+### Rebuilding the fonts
 
-Terminology is not yet consistent — 地精 and 哥布林 are both in use for "goblin" and one
-has to be picked.
-
-## Verifying the font
-
-`tests/godot/ZhFontProbe.cs` renders all four `.SYS` fonts with their Chinese fallback,
-prints the ink-derived scale, the resulting em size, the pixel font's ink height and the
-fallback's hanzi ink height -- which must agree -- and counts pixels that came out at an
-intermediate level, which must be zero. It needs a real rendering driver, so it cannot run
-headless:
-
-```sh
-Godot_v4.3-stable_mono_win64.exe --path . res://tests/godot/zh_font_probe.tscn
+```bash
+python i18n/build_fallback_fonts.py
 ```
 
-`UW_DATA` and `UW_PROBE_OUT` override the data and output directories.
+It prints a table of the numbers the pixel fonts demand and what each baked font
+delivers, and fails if any slot's ink misses its target by more than 2% or if advances
+come out narrower than the ink. Requires `fontTools`.
+
+## Translation tables
+
+Two tables, one per game, both flat `{key: 中文}` maps keyed `"block_string"`:
+
+| Table | Game | Keys | Translated |
+|---|---|---|---|
+| `translation_zh.json` | UW1 | 7091 | 1871 |
+| `translation_zh_uw2.json` | UW2 | 9765 | 9686 |
+
+The engine picks one based on the game being loaded — the two `STRINGS.PAK` files share
+key names but not content, so a single table cannot serve both. `GameStrings.GetString`
+falls back to the original English on a miss.
+
+### Things the tables deliberately leave alone
+
+- **Spell words** — keys `002_071`–`002_076` (INSAHN / FANLO / NO / SUMM RA / MU AHM /
+  OM CAH) are absent from the UW2 table on purpose, so they fall back to the English
+  incantations. `src/objects/shrine.cs` compares against them verbatim.
+- **Pure control strings** — entries that contain only escape codes and placeholders
+  (`@GS102`, `\1@SS1\0`, `blnkmap.byt`) are passed through unchanged; there is nothing
+  to translate.
+
+### Known gaps
+
+- **UW1 table is partial.** Only 1871 of 7091 keys are translated; the remaining NPC
+  dialogue (string blocks 3585–3999) is still English. The UW2 table is essentially
+  complete.
+- **Ten hardcoded English strings** in the engine bypass the string table entirely, so
+  no table can fix them. They are listed in [`../README.zh-CN.md`](../README.zh-CN.md).
+
+## Terminology
+
+Naming is not centralised; the same word is translated one way in each table. The
+decisions below are what the tables follow.
+
+- **The Avatar** — the player character. The tables keep the English "Avatar" where the
+  game uses it as a title, and use 「化身」 where it reads as a noun.
+- **Runes** — 「符文」. The UW rune stones are 「符文石」; the shrine words are 「咒词」.
+- **Mana / health / stamina** — 「法力」/「生命」/「体力」, matching the three bars.
+- **The Underworld** — 「地底」 for the place, 「冥界」 reserved for flavour text.
+- **Skills** — skill names follow the UW manual's own Chinese names where they exist
+  (「潜行」 for Stealth, 「开锁」 for Pick Lock), otherwise a literal rendering.
+
+If you spot an inconsistency, the fix belongs in the table, not in the engine.

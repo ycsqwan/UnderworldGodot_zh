@@ -35,19 +35,28 @@ This repository is a fork of [hankmorgan/UnderworldGodot](https://github.com/han
 that adds a Simplified Chinese localization. Upstream is MIT licensed and unchanged; see
 `LICENSE.md` for the upstream copyright notice. Nothing here is merged back upstream.
 
+**Full documentation is in [README.zh-CN.md](README.zh-CN.md).**
+
 ### What is added relative to upstream
 
 | Path | What it is |
 |---|---|
-| `resources/fonts/translation_zh.json` | The translation table, keyed `"block_string"` (for example `001_002`). `GameStrings.GetString` consults it first and falls back to the original English on a miss, so an untranslated string is still playable. |
-| `resources/fonts/WenQuanYiBitmapSong14px.ttf` | The CJK fallback the four `.SYS` UI fonts draw their Chinese through. See `docs/font-architecture.md`. |
-| `i18n/` | Scripts that collect the characters the game renders, subset the fallback to them, and check coverage. |
+| `resources/fonts/translation_zh.json` | UW1 translation table, keyed `"block_string"` (for example `001_002`). |
+| `resources/fonts/translation_zh_uw2.json` | UW2 translation table. The engine picks one or the other based on the game being loaded — the two `STRINGS.PAK` files share key names but not content. |
+| `resources/fonts/WenQuanYiBitmapSong14px-ink{4,6,7,15}.ttf` | The CJK fallback the four `.SYS` UI fonts draw their Chinese through, one baked TTF per placeholder font. See `docs/font-architecture.md`. |
+| `i18n/` | Scripts that collect the characters the game renders, bake the fallback to them, and check coverage. |
+| `README.zh-CN.md` | Chinese-language documentation for this fork. |
+
+`GameStrings.GetString` consults the active table first and falls back to the
+original English on a miss, so an untranslated string is still playable.
 
 ### Status
 
-The translation is **incomplete**. `i18n/README.md` records what is translated, what is
-not, and the terminology decisions taken so far. The CJK font is wired in and verified
-against all four UI fonts; the game itself has not yet been played end to end with it.
+The UW2 table covers 9686 of 9765 keys. The UW1 table covers 1871 of 7091 keys —
+the remaining NPC dialogue (string blocks 3585–3999) is still English. The CJK font
+is baked into four per-slot TTFs and verified; the game has been run with both
+tables. Known gaps, including a handful of hardcoded English strings in the engine
+that bypass the string table, are listed in `README.zh-CN.md`.
 
 ## Overview
 An engine recreation of Ultima Underworld and Ultima Underworld 2 in the Godot Engine.
