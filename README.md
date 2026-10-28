@@ -52,8 +52,9 @@ original English on a miss, so an untranslated string is still playable.
 
 ### Status
 
-The UW2 table covers 9686 of 9765 keys. The UW1 table covers 1871 of 7091 keys —
-the remaining NPC dialogue (string blocks 3585–3999) is still English. The CJK font
+The UW2 table covers 9686 of 9765 keys and the UW1 table 7031 of 7091. Every
+remaining key is left in English on purpose: spell mantras, debug format strings and
+control-only entries that the engine matches or parses verbatim. The CJK font
 is baked into four per-slot TTFs and verified; the game has been run with both
 tables. Known gaps, including a handful of hardcoded English strings in the engine
 that bypass the string table, are listed in `README.zh-CN.md`.

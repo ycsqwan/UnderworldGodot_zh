@@ -69,7 +69,7 @@ Two tables, one per game, both flat `{key: 中文}` maps keyed `"block_string"`:
 
 | Table | Game | Keys | Translated |
 |---|---|---|---|
-| `translation_zh.json` | UW1 | 7091 | 1871 |
+| `translation_zh.json` | UW1 | 7091 | 7031 |
 | `translation_zh_uw2.json` | UW2 | 9765 | 9686 |
 
 The engine picks one based on the game being loaded — the two `STRINGS.PAK` files share
@@ -87,9 +87,9 @@ falls back to the original English on a miss.
 
 ### Known gaps
 
-- **UW1 table is partial.** Only 1871 of 7091 keys are translated; the remaining NPC
-  dialogue (string blocks 3585–3999) is still English. The UW2 table is essentially
-  complete.
+- **Both tables are essentially complete.** UW1 is 7031 of 7091 and UW2 is 9686 of
+  9765. The leftovers are the deliberate pass-throughs listed above plus the UW1
+  spell mantras `002_051`–`002_076`, which are compared verbatim by the engine.
 - **Ten hardcoded English strings** in the engine bypass the string table entirely, so
   no table can fix them. They are listed in [`../README.zh-CN.md`](../README.zh-CN.md).
 

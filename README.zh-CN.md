@@ -24,7 +24,7 @@
 | 上游 | [hankmorgan/UnderworldGodot](https://github.com/hankmorgan/UnderworldGodot) |
 | 分支 | `chinese-i18n` |
 | 远端 | [ycsqwan/UnderworldGodot_zh](https://github.com/ycsqwan/UnderworldGodot_zh) |
-| UW1 译表 | `resources/fonts/translation_zh.json` — 7091 键，1871 条中文 |
+| UW1 译表 | `resources/fonts/translation_zh.json` — 7091 键，7031 条中文 |
 | UW2 译表 | `resources/fonts/translation_zh_uw2.json` — 9765 键，9686 条中文 |
 | 字体 | 文泉驿点阵宋体 14px，4 份烘焙 TTF |
 | 换行 | 按像素宽度 + CJK 逐字断点 |
@@ -134,8 +134,9 @@ Godot_v4.3-stable_mono_win64.exe --path . --export-release "Windows Desktop" bui
 
 **其他：**
 
-- **UW1 译表不完整** — 7091 键中仅 1871 条中文，其余 5090 条 NPC 对话
-  （`STRINGS.PAK` 区块 3585–3999）保留英文。UW2 表已基本覆盖。
+- **两表均已基本覆盖** — UW1 为 7031/7091，UW2 为 9686/9765。剩余键全部是刻意保留：
+  UW1 的 26 条真言（`002_051`–`002_076`，引擎逐字比对）、`024` 区块的调试串与
+  格式串、纯控制码条目，运行时回落英文原文。
 - **UW2 咒词保留英文** — 键 `002_071`–`002_076`（INSAHN / FANLO / NO / SUMM RA /
   MU AHM / OM CAH）故意不译，运行时回落英文原文。这是设计如此：
   `src/objects/shrine.cs:155` 用 `GetString(2, 51 + mIndex)` 比对咒词，
